@@ -7,18 +7,29 @@ public class Session {
     private final Instant createdAt;
     private final Instant expiresAt;
     private SessionStatus status;
+    private final String agentId;
+    private final String customerId;
 
-    public Session(String sessionId, Instant createdAt, Instant expiresAt) {
+    public Session(String sessionId, String agentId, String customerId, Instant createdAt, Instant expiresAt) {
         this.sessionId = sessionId;
         this.createdAt = createdAt;
         this.expiresAt = expiresAt;
-        this.status = SessionStatus.ACTIVE;
+        this.status = SessionStatus.MATCHED;
+        this.agentId = agentId;
+        this.customerId = customerId;
     }
 
     public String getSessionId() { return sessionId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getExpiresAt() { return expiresAt; }
     public SessionStatus getStatus() { return status; }
+    public String getAgentId() {
+        return agentId;
+    }
+
+    public String getCustomerId() {
+        return customerId;
+    }
 
     public boolean isExpired(Instant now) {
         return now.isAfter(expiresAt);
