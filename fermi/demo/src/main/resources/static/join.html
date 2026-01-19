@@ -93,8 +93,10 @@
       if (!check.ok) throw new Error("세션 조회 실패: " + check.status);
       const info = await check.json();
       setText("status", `세션 상태: ${info.status}, 만료: ${info.expiresAt}`);
-      if (info.status !== "ACTIVE") {
-        setText("status", `❌ 세션이 ACTIVE가 아닙니다: ${info.status}`);
+      // 현재 구현에서는 세션이 MATCHED(매칭 완료, 입장 대기) 상태일 수 있음.
+      // 고객/상담원 입장은 MATCHED 또는 ACTIVE 둘 다 허용.
+      if (info.status !== "ACTIVE" && info.status !== "MATCHED") {
+        setText("status", `❌ 세션이 입장 가능한 상태가 아닙니다: ${info.status}`);
         return;
       }
     } catch (e) {
