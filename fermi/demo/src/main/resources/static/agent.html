@@ -24,6 +24,16 @@
     <button id="btnCreateSession">세션 생성</button>
     <button id="btnCopyCustomerUrl" disabled>고객 링크 복사</button>
   </div>
+  <div class="row" style="margin-top:10px;">
+    <div style="flex:1; min-width: 220px;">
+      <label>agentId</label>
+      <input id="agentId" placeholder="예: agent-1" value="agent-1" />
+    </div>
+    <div style="flex:1; min-width: 220px;">
+      <label>customerId (임시)</label>
+      <input id="customerId" placeholder="예: customer-1" value="customer-1" />
+    </div>
+  </div>
   <p class="hint">세션 생성 후 고객에게 링크를 보내세요.</p>
   <div class="row" style="flex:1">
     <div style="flex:1; min-width: 320px;">
@@ -41,7 +51,7 @@
 <div class="card">
   <h3>연결</h3>
   <div class="row">
-    <button id="btnStartMedia">카메라/마이크 켜기</button>
+    <button id="btnStartMedia" disabled>카메라/마이크 켜기</button>
     <button id="btnCreatePC" disabled>PC 만들기</button>
     <button id="btnConnectWS" disabled>WS 연결</button>
     <button id="btnStartCall" disabled>통화 시작(Offer)</button>
@@ -135,18 +145,34 @@
   // ===== Phase3: create session =====
   $("btnCreateSession").onclick = async () => {
     try {
+      const agentId = $("agentId").value.trim();
+      const customerId = $("customerId").value.trim();
+      if (!agentId) { alert("agentId를 입력하세요"); return; }
+      if (!customerId) { alert("customerId를 입력하세요(Phase4에서는 매칭에서 자동으로 채워질 예정)"); return; }
+
       setText("sessionStatus", "세션 생성 중...");
-      const res = await fetch(`${getApiBase()}/api/sessions`, { method: "POST" });
-      if (!res.ok) throw new Error("create session failed: " + res.status);
+
+      const res = await fetch(`${getApiBase()}/api/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId, customerId })
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`create session failed: ${res.status} ${text}`);
+      }
+
       const data = await res.json();
 
       roomId = data.sessionId;
       $("sessionId").value = data.sessionId;
-      $("customerUrl").value = getCustomerJoinUrl(data.sessionId);
+
+      // 서버가 customerUrl을 내려주면 그걸 우선 사용 (Render/배포 환경에서 정확)
+      $("customerUrl").value = data.customerUrl || getCustomerJoinUrl(data.sessionId);
       $("btnCopyCustomerUrl").disabled = false;
 
       setText("sessionStatus", `세션 생성 완료. 만료: ${data.expiresAt}`);
-      // 연결 버튼 활성화
       $("btnStartMedia").disabled = false;
     } catch (e) {
       console.error(e);
