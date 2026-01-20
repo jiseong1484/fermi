@@ -1,7 +1,10 @@
 package com.fermi.signaling.application.agent;
 
 import com.fermi.signaling.domain.agent.*;
+import org.springframework.stereotype.Service;
+import java.util.Optional;
 
+@Service
 public class AgentService {
     private final AgentRepository agentRepository;
 
@@ -29,5 +32,9 @@ public class AgentService {
         Agent a = agentRepository.findById(agentId).orElseThrow();
         a.setStatus(AgentStatus.BUSY);
         agentRepository.save(a);
+    }
+
+    public Optional<Agent> findById(String agentId) {
+        return agentRepository.findById(agentId);
     }
 }

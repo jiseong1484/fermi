@@ -1,307 +1,236 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Join Session</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; padding: 16px; max-width: 960px; margin: 0 auto; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; }
-    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-    video { width: 100%; max-height: 320px; background: #000; border-radius: 12px; }
-    .hint { color: #555; font-size: 14px; }
-    pre { background: #f6f6f6; padding: 10px; border-radius: 10px; overflow: auto; }
-    .modal { position: fixed; inset: 0; display: none; z-index: 9999; }
-    .modal.is-open { display: block; }
-    .modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); }
-    .modal__panel {
-      position: relative;
-      max-width: 420px;
-      margin: 18vh auto 0;
-      background: #fff;
-      border-radius: 14px;
-      border: 1px solid #e5e5e5;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-      padding: 16px;
-    }
-    .modal__title { margin: 0 0 8px 0; font-size: 18px; }
-    .modal__message { margin: 0 0 14px 0; color: #333; line-height: 1.4; }
-    .modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
-  </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>상담 대기</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 16px; max-width: 960px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; }
+        button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+        video { width: 100%; max-height: 320px; background: #000; border-radius: 12px; }
+        .hint { color: #555; font-size: 14px; }
+        pre { background: #f6f6f6; padding: 10px; border-radius: 10px; overflow: auto; }
+        #call-ui { display: none; }
+    </style>
 </head>
 <body>
-<h1>고객 입장 (Customer)</h1>
+<h1>고객 페이지</h1>
 
-<div class="card">
-  <div class="hint">링크의 sessionId로 자동 입장합니다.</div>
-  <div class="hint" id="status"></div>
-  <div class="hint" id="wsStatus">WS: -</div>
-  <div class="hint" id="pcStatus">PC: -</div>
-  <div class="hint" id="iceStatus">ICE: -</div>
-  <button id="btnEndCall" style="margin-top:8px;">통화 종료</button>
-  <pre id="log"></pre>
+<div class="card" id="waiting-ui">
+    <h2>상담 대기 중...</h2>
+    <p id="status">상담사와 연결을 위해 대기열에 등록하고 있습니다.</p>
+    <p class="hint">이 페이지를 닫지 마세요.</p>
 </div>
 
-<div class="card">
-  <h3>영상</h3>
-  <div class="row">
-    <div style="flex:1; min-width: 320px;">
-      <div class="hint">Local</div>
-      <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1); -webkit-transform: scaleX(-1);"></video>
-    </div>
+<div class="card" id="call-ui">
+    <div class="hint" id="wsStatus">WS: -</div>
+    <div class="hint" id="pcStatus">PC: -</div>
+    <div class="hint" id="iceStatus">ICE: -</div>
+    <button id="btnEndCall" style="margin-top:8px;">통화 종료</button>
 
-    <div style="flex:1; min-width: 320px;">
-      <div class="hint">Remote</div>
-      <video id="remoteVideo" autoplay playsinline style="transform: scaleX(-1); -webkit-transform: scaleX(-1);"></video>
+    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <div style="flex:1; min-width: 320px;">
+            <div class="hint">Local</div>
+            <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
+        </div>
+        <div style="flex:1; min-width: 320px;">
+            <div class="hint">Remote</div>
+            <video id="remoteVideo" autoplay playsinline style="transform: scaleX(-1);"></video>
+        </div>
     </div>
-  </div>
 </div>
+
+<pre id="log"></pre>
 
 <script>
-  const $ = (id) => document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
 
-  let roomId = "";
-  let ws = null;
-  let pc = null;
-  let localStream = null;
-  let pendingRemoteCandidates = [];
+    let roomId = "";
+    let customerId = `customer_${Math.random().toString(36).substring(2, 9)}`;
+    let ws = null;
+    let pc = null;
+    let localStream = null;
 
-  function uiLog(...args) {
-    console.log(...args);
-    const el = $("log");
-    el.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ") + "\n";
-    el.scrollTop = el.scrollHeight;
-  }
-  function setText(id, msg) { const el = $(id); if (el) el.textContent = msg; }
-
-  function getWsUrl() {
-    const proto = location.protocol === "https:" ? "wss" : "ws";
-    // same-origin (ngrok https -> wss, local http -> ws)
-    return `${proto}://${location.host}/ws`;
-  }
-
-  function getApiBase() {
-    // same-origin (ngrok https, local http)
-    return location.origin;
-  }
-
-  function wsSend(type, payload) {
-    const msg = { type, roomId, payload };
-    uiLog("[WS ->]", type, "room=", roomId);
-    if (!ws || ws.readyState !== 1) return;
-    ws.send(JSON.stringify(msg));
-  }
-
-  function showEndModal(message) {
-    const modal = $("endModal");
-    const msgEl = $("endModalMessage");
-    if (!modal) return;
-    if (msgEl) msgEl.textContent = message || "통화가 종료되었습니다.";
-    modal.classList.add("is-open");
-    modal.setAttribute("aria-hidden", "false");
-
-    // focus the OK button for keyboard users
-    const ok = $("btnEndModalOk");
-    if (ok) ok.focus();
-  }
-
-  function hideEndModal() {
-    const modal = $("endModal");
-    if (!modal) return;
-    modal.classList.remove("is-open");
-    modal.setAttribute("aria-hidden", "true");
-  }
-
-  async function endSession(reason) {
-    uiLog("[CALL] end requested", reason || "");
-    // 1) notify server (idempotent)
-    try {
-      await fetch(`${getApiBase()}/api/sessions/${encodeURIComponent(roomId)}/end`, { method: "POST" });
-    } catch (e) { console.warn("end api failed", e); }
-
-    // 2) notify peer via WS (best-effort)
-    try { wsSend("ended", { reason: reason || "user_end" }); } catch (e) {}
-
-    // 3) local cleanup
-    showEndModal("통화를 종료했습니다.");
-    cleanup();
-  }
-
-  function cleanup() {
-    setText("status", "세션 종료됨");
-    try {
-      if (pc) pc.close();
-    } catch (e) {}
-    pc = null;
-
-    try {
-      if (localStream) localStream.getTracks().forEach(t => t.stop());
-    } catch (e) {}
-    localStream = null;
-
-    try {
-      if (ws && ws.readyState === 1) ws.close();
-    } catch (e) {}
-    ws = null;
-
-    setText("pcStatus", "PC: closed");
-    setText("wsStatus", "WS: closed");
-    setText("iceStatus", "ICE: -");
-  }
-
-  async function flushPendingCandidates() {
-    if (!pc || !pc.remoteDescription) return;
-    const toAdd = pendingRemoteCandidates;
-    pendingRemoteCandidates = [];
-    for (const c of toAdd) {
-      try { await pc.addIceCandidate(c); } catch (e) { console.error(e); }
+    function uiLog(...args) {
+        console.log(...args);
+        const el = $("log");
+        el.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ") + "\n";
+        el.scrollTop = el.scrollHeight;
     }
-  }
+    function setText(id, msg) { const el = $(id); if (el) el.textContent = msg; }
+    function show(id) { $(id).style.display = 'block'; }
+    function hide(id) { $(id).style.display = 'none'; }
 
-  // ===== Boot =====
-  (async function init() {
-    const params = new URLSearchParams(location.search);
-    const sessionId = params.get("sessionId");
-    if (!sessionId) {
-      setText("status", "❌ sessionId가 없는 링크입니다.");
-      return;
-    }
-    roomId = sessionId;
-    setText("status", `세션 입장 준비: ${roomId}`);
 
-    // (선택) 세션 유효성 확인
-    try {
-      const check = await fetch(`${getApiBase()}/api/sessions/${encodeURIComponent(roomId)}`);
-      if (!check.ok) throw new Error("세션 조회 실패: " + check.status);
-      const info = await check.json();
-      setText("status", `세션 상태: ${info.status}, 만료: ${info.expiresAt}`);
-      // 현재 구현에서는 세션이 MATCHED(매칭 완료, 입장 대기) 상태일 수 있음.
-      // 고객/상담원 입장은 MATCHED 또는 ACTIVE 둘 다 허용.
-      if (info.status !== "ACTIVE" && info.status !== "MATCHED") {
-        setText("status", `❌ 세션이 입장 가능한 상태가 아닙니다: ${info.status}`);
-        return;
-      }
-    } catch (e) {
-      // 개발 중에는 체크 실패해도 진행 가능하게 두고 싶으면 return을 빼도 됨
-      setText("status", "⚠️ 세션 확인 실패(개발중): " + e.message);
-      // return;
+    function getWsUrl() {
+        const proto = location.protocol === "https:" ? "wss" : "ws";
+        return `${proto}://${location.host}/ws`;
     }
 
-    // Media
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        $("localVideo").srcObject = localStream;
-    } catch (e) {
-        setText("status", "X getUserMedia 실패: " + e.message);
-        return ;
+    function getApiBase() {
+        return location.origin;
     }
-    uiLog("[MEDIA] local stream ready");
 
-    // PC
-    pc = new RTCPeerConnection({ iceServers: [] });
-    for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
-
-    pc.ontrack = (event) => {
-      $("remoteVideo").srcObject = event.streams[0];
-      uiLog("[PC] ontrack remote stream");
-    };
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        uiLog("[ICE local] generated", event.candidate.candidate);
-        if (ws && ws.readyState === 1 && roomId) wsSend("candidate", event.candidate);
-      } else {
-        setText("iceStatus", "ICE 후보 수집 완료");
-      }
-    };
-
-    pc.onconnectionstatechange = () => setText("pcStatus", `PC: ${pc.connectionState}`);
-    pc.oniceconnectionstatechange = () => setText("iceStatus", `ICE: ${pc.iceConnectionState}`);
-
-    setText("pcStatus", "PC: created");
-
-    // WS connect + join
-    ws = new WebSocket(getWsUrl());
-    uiLog("[WS] connecting to", ws.url);
-
-    ws.onopen = () => {
-      setText("wsStatus", "WS: connected");
-      uiLog("[WS] open");
-      wsSend("join", {});
-    };
-
-    ws.onclose = () => {
-      setText("wsStatus", "WS: closed");
-      uiLog("[WS] close");
-    };
-
-    ws.onerror = () => {
-      setText("wsStatus", "WS: error");
-      uiLog("[WS] error");
-    };
-
-    ws.onmessage = async (evt) => {
-      let msg;
-      try { msg = JSON.parse(evt.data); }
-      catch (e) { console.error("JSON parse failed", e, evt.data); return; }
-
-      uiLog("[WS <-]", msg.type, "room=", msg.roomId);
-
-      if (msg.type === "offer") {
-        await pc.setRemoteDescription(msg.payload);
-        await flushPendingCandidates();
-
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        wsSend("answer", pc.localDescription);
-
-      } else if (msg.type === "answer") {
-        await pc.setRemoteDescription(msg.payload);
-        await flushPendingCandidates();
-
-      } else if (msg.type === "candidate") {
-        if (pc.remoteDescription) await pc.addIceCandidate(msg.payload);
-        else pendingRemoteCandidates.push(msg.payload);
-      } else if (msg.type === "ended") {
-        uiLog("[CALL] ended by peer", msg.payload);
-        showEndModal("상대가 통화를 종료했습니다.");
-        cleanup();
-      }
-    };
-
-    const endBtn = $("btnEndCall");
-    if (endBtn) endBtn.onclick = () => endSession("customer_click");
-
-    const okBtn = $("btnEndModalOk");
-    if (okBtn) okBtn.onclick = () => hideEndModal();
-
-    const modal = $("endModal");
-    if (modal) {
-      // click outside closes
-      modal.addEventListener("click", (e) => {
-        if (e.target === modal || e.target.classList.contains("modal__backdrop")) {
-          hideEndModal();
+    function wsSend(type, payload) {
+        const msg = { type, roomId, payload };
+        uiLog("[WS ->]", type, "room=", roomId);
+        if (!ws || ws.readyState !== 1) {
+            uiLog("!! WS not ready");
+            return;
         }
-      });
-      // ESC closes
-      window.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") hideEndModal();
-      });
+        ws.send(JSON.stringify(msg));
     }
-  })();
-</script>
 
-<!-- Call End Modal -->
-<div id="endModal" class="modal" aria-hidden="true">
-  <div class="modal__backdrop"></div>
-  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="endModalTitle">
-    <h2 id="endModalTitle" class="modal__title">통화 종료</h2>
-    <p id="endModalMessage" class="modal__message">통화가 종료되었습니다.</p>
-    <div class="modal__actions">
-      <button id="btnEndModalOk">확인</button>
-    </div>
-  </div>
-</div>
+    function wsRegister() {
+        const msg = { type: "register", userId: customerId };
+        uiLog("[WS ->] register", msg);
+        ws.send(JSON.stringify(msg));
+    }
+    
+    async function joinQueue() {
+        setText("status", "대기열에 등록합니다...");
+        try {
+            const response = await fetch(`${getApiBase()}/api/queue/join`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ customerId: customerId })
+            });
+
+            if (!response.ok) {
+                throw new Error(`대기열 등록 실패: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            setText("status", `대기열에 성공적으로 등록되었습니다. 상담사 배정을 기다려주세요... (Ticket: ${result.ticketId})`);
+            uiLog("[API] Joined queue successfully", result);
+
+        } catch (e) {
+            setText("status", `오류 발생: ${e.message}`);
+            uiLog("[API] Error joining queue", e);
+        }
+    }
+
+
+    async function startCall() {
+        hide("waiting-ui");
+        show("call-ui");
+
+        // Media
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            $("localVideo").srcObject = localStream;
+        } catch (e) {
+            setText("status", "X getUserMedia 실패: " + e.message);
+            return ;
+        }
+        uiLog("[MEDIA] local stream ready");
+
+        // PC
+        pc = new RTCPeerConnection({ iceServers: [] });
+        for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
+
+        pc.ontrack = (event) => {
+            $("remoteVideo").srcObject = event.streams[0];
+            uiLog("[PC] ontrack remote stream");
+        };
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                uiLog("[ICE local] generated");
+                wsSend("candidate", event.candidate);
+            }
+        };
+        
+        pc.onconnectionstatechange = () => setText("pcStatus", `PC: ${pc.connectionState}`);
+        pc.oniceconnectionstatechange = () => setText("iceStatus", `ICE: ${pc.iceConnectionState}`);
+
+        setText("pcStatus", "PC: created");
+
+        // Join the room received from the server
+        wsSend("join", {});
+    }
+
+    function cleanup() {
+        try { if (pc) pc.close(); } catch (e) {}
+        pc = null;
+        try { if (localStream) localStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+        localStream = null;
+        try { if (ws && ws.readyState === 1) ws.close(); } catch (e) {}
+        ws = null;
+        
+        setText("status", "상담이 종료되었습니다.");
+        hide("call-ui");
+        show("waiting-ui");
+    }
+
+    // ===== Boot =====
+    (function init() {
+        setText("status", "서버에 연결 중...");
+
+        ws = new WebSocket(getWsUrl());
+        uiLog("[WS] connecting to", ws.url);
+
+        ws.onopen = () => {
+            setText("wsStatus", "WS: connected");
+            uiLog("[WS] open");
+            
+            // 1. Register this client with its unique customerId
+            wsRegister();
+            
+            // 2. Join the waiting queue
+            joinQueue();
+        };
+
+        ws.onclose = () => {
+            setText("wsStatus", "WS: closed");
+            uiLog("[WS] close");
+        };
+
+        ws.onerror = () => {
+            setText("wsStatus", "WS: error");
+            uiLog("[WS] error");
+        };
+
+        ws.onmessage = async (evt) => {
+            let msg;
+            try { msg = JSON.parse(evt.data); } 
+            catch (e) { console.error("JSON parse failed", e, evt.data); return; }
+
+            uiLog("[WS <-]", msg);
+
+            // This is the message from the MatchingService
+            if (msg.type === "session-matched") {
+                roomId = msg.sessionId;
+                uiLog(`Matched! SessionId (roomId): ${roomId}`);
+                await startCall();
+            }
+            
+            // Standard WebRTC signaling
+            else if (msg.type === "offer") {
+                await pc.setRemoteDescription(msg.payload);
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                wsSend("answer", pc.localDescription);
+            } else if (msg.type === "candidate") {
+                 try {
+                    await pc.addIceCandidate(msg.payload);
+                } catch(e) {
+                    console.error("Error adding received ice candidate", e);
+                }
+            } else if (msg.type === "ended") {
+                uiLog("[CALL] ended by peer", msg.payload);
+                cleanup();
+            }
+        };
+
+        const endBtn = $("btnEndCall");
+        if (endBtn) endBtn.onclick = () => {
+            wsSend("ended", { reason: "customer_click" });
+            cleanup();
+        };
+    })();
+</script>
 
 </body>
 </html>
