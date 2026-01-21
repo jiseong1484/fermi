@@ -157,7 +157,22 @@
         if (queueStatusPoller) clearInterval(queueStatusPoller);
         setText("queueStatus", "");
 
-        pc = new RTCPeerConnection({ iceServers: [] });
+        const iceConfiguration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }, // Public STUN server
+                // {
+                //     urls: "turn:61.74.145.110:3478?transport=udp",
+                //     username: "fermi_user",
+                //     credential: "411c0df2bd576db828c933c537e8841a"
+                // },
+                // {
+                //     urls: "turns:your-turn-server.com:443?transport=tcp",
+                //     username: "your_username",
+                //     credential: "your_password"
+                // }
+            ]
+        };
+        pc = new RTCPeerConnection(iceConfiguration);
 
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
