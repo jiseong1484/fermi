@@ -5,17 +5,15 @@ services:
     name: fermi-app
     runtime: docker
     autoDeploy: false
-    # Paths are relative to the repository root
+    # Path to the Dockerfile, relative to the repository root
     dockerfilePath: fermi/demo/Dockerfile
-    dockerContext: fermi/demo
 
   - type: web # Web Service: The Nginx proxy. Receives public traffic.
     name: fermi-proxy
     runtime: docker
     autoDeploy: false
-    # Paths are relative to the repository root
+    # Path to the Dockerfile, relative to the repository root
     dockerfilePath: fermi/demo/nginx/Dockerfile
-    dockerContext: fermi/demo/nginx
     envVars:
       # Inject the internal hostname of the backend service into the UPSTREAM_HOST env var.
       # Nginx will use this to proxy requests to the backend.
