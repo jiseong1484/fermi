@@ -2,11 +2,18 @@ package com.fermi.signaling.api.session;
 
 import com.fermi.signaling.api.session.dto.CreateSessionRequest;
 import com.fermi.signaling.api.session.dto.CreateSessionResponse;
+import com.fermi.signaling.api.session.dto.CreateSummaryRequest;
 import com.fermi.signaling.api.session.dto.GetSessionResponse;
 import com.fermi.signaling.api.session.dto.EndSessionResponse;
+import com.fermi.signaling.api.session.dto.SessionDto;
 import com.fermi.signaling.application.session.SessionService;
 import com.fermi.signaling.domain.session.Session;
+import com.fermi.signaling.domain.session.SessionSummary;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/sessions")
@@ -16,6 +23,13 @@ public class SessionController {
 
     public SessionController(SessionService sessionService) {
         this.sessionService = sessionService;
+    }
+
+    @GetMapping
+    public List<SessionDto> listAllSessions() {
+        return sessionService.getAllSessions().stream()
+            .map(SessionDto::fromEntity)
+            .collect(Collectors.toList());
     }
 
     @PostMapping
@@ -53,5 +67,14 @@ public class SessionController {
                 s.getStatus(),
                 s.getExpiresAt()
         );
+    }
+
+    @PostMapping("/{sessionId}/summary")
+    public ResponseEntity<Void> createSummary(
+        @PathVariable String sessionId,
+        @RequestBody CreateSummaryRequest req
+    ) {
+        sessionService.saveSummary(sessionId, req.content());
+        return ResponseEntity.ok().build();
     }
 }

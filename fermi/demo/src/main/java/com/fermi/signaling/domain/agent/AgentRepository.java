@@ -1,9 +1,11 @@
 package com.fermi.signaling.domain.agent;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import java.util.Optional;
 
-public interface AgentRepository {
-    void save(Agent agent);
-    Optional<Agent> findById(String agentId);
-    Optional<Agent> findFirstAvailable();
+@Repository
+public interface AgentRepository extends JpaRepository<Agent, String> {
+    Optional<Agent> findFirstByStatus(AgentStatus status);
 }

@@ -1,34 +1,49 @@
 package com.fermi.signaling.domain.session;
 
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.Instant;
 
+@Entity
+@Table(name = "sessions")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Session {
-    private final String sessionId;
-    private final Instant createdAt;
-    private final Instant expiresAt;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String sessionId;
+
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(nullable = false)
+    private Instant expiresAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private SessionStatus status;
-    private final String agentId;
-    private final String customerId;
+
+    @Column(nullable = false)
+    private String agentId;
+
+    @Column(nullable = false)
+    private String customerId;
 
     public Session(String sessionId, String agentId, String customerId, Instant createdAt, Instant expiresAt) {
         this.sessionId = sessionId;
+        this.agentId = agentId;
+        this.customerId = customerId;
         this.createdAt = createdAt;
         this.expiresAt = expiresAt;
         this.status = SessionStatus.MATCHED;
-        this.agentId = agentId;
-        this.customerId = customerId;
-    }
-
-    public String getSessionId() { return sessionId; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getExpiresAt() { return expiresAt; }
-    public SessionStatus getStatus() { return status; }
-    public String getAgentId() {
-        return agentId;
-    }
-
-    public String getCustomerId() {
-        return customerId;
     }
 
     public boolean isExpired(Instant now) {
@@ -42,6 +57,6 @@ public class Session {
     }
 
     public void end() {
-        status = SessionStatus.ENDED;
+        this.status = SessionStatus.ENDED;
     }
 }

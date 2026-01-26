@@ -54,6 +54,10 @@ public class SignalingHandler extends TextWebSocketHandler {
                 if (!userId.isBlank()) {
                     userSessions.put(userId, session);
                     System.out.println("User registered: " + userId + " with session " + session.getId());
+
+                    // Send confirmation back to the client
+                    Map<String, Object> response = Map.of("type", "register-success");
+                    session.sendMessage(new TextMessage(om.writeValueAsString(response)));
                 }
             }
             case "join" -> {

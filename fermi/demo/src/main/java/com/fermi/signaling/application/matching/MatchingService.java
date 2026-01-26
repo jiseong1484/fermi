@@ -62,7 +62,10 @@ public class MatchingService {
             // 4. 상담사 상태 BUSY로 변경
             agentService.setBusy(agentId);
 
-            // 5. 고객과 상담사에게 WebSocket 메시지 전송
+            // 5. 이벤트 기록
+            sessionService.logEvent(session.getSessionId(), "SESSION_MATCHED", null);
+
+            // 6. 고객과 상담사에게 WebSocket 메시지 전송
             Map<String, Object> message = Map.of(
                     "type", "session-matched",
                     "sessionId", session.getSessionId(),

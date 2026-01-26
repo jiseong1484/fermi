@@ -37,4 +37,8 @@ public class AgentService {
     public Optional<Agent> findById(String agentId) {
         return agentRepository.findById(agentId);
     }
+
+    public Optional<Agent> findFirstAvailableAgent() {
+        return agentRepository.findFirstByStatus(AgentStatus.AVAILABLE);
+    }
 }

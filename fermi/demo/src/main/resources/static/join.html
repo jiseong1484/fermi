@@ -4,40 +4,66 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>상담 대기</title>
+    <!-- Bootstrap and Bootswatch CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/flatly/bootstrap.min.css">
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; padding: 16px; max-width: 960px; margin: 0 auto; }
-        .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; }
-        button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-        button:disabled { opacity: .5; cursor: not-allowed; }
-        video { width: 100%; max-height: 320px; background: #000; border-radius: 12px; }
-        .hint { color: #555; font-size: 14px; }
-        pre { background: #f6f6f6; padding: 10px; border-radius: 10px; overflow: auto; }
-        #call-ui, #co-browsing-container { display: none; }
-
-        /* Co-browsing and Modal Styles */
-        #pdf-viewer-container {
-            position: relative;
-            width: 100%;
-            /* height is set by canvas */
-            border: 1px solid #ccc;
-            min-height: 600px; /* Provide a minimum height */
+        html, body {
+            height: 100%;
         }
-        #pdf-viewer-container canvas {
-            display: block;
-            margin: 0 auto;
+        body {
+            display: flex;
+            flex-direction: column;
         }
-        #pdf-pagination-controls {
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        #video-sidebar {
+            flex-shrink: 0;
+            width: 320px;
+            height: 100%;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 1rem;
+        }
+        #main-content {
+            flex-grow: 1;
+            height: 100%;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        #logo-view {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 16px;
-            margin-top: 12px;
+            height: 100%;
+            flex-direction: column;
+            text-align: center;
+        }
+        #logo-view img {
+            max-width: 200px;
+            opacity: 0.8;
+        }
+        #pdf-viewer-container {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            min-height: 70vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        video {
+            width: 100%;
+            border-radius: 0.375rem;
+            background-color: #000;
         }
         #agent-cursor {
             position: absolute;
             width: 24px;
             height: 24px;
-            transform: translate(-50%, -50%); /* Center the dot on the cursor */
+            transform: translate(-50%, -50%);
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="rgba(255, 0, 0, 0.4)"/><circle cx="12" cy="12" r="4" fill="red"/></svg>');
             background-size: contain;
             display: none;
@@ -46,78 +72,94 @@
         }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 100;
+            background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1050;
         }
-        .modal-content { background: #fff; padding: 20px; border-radius: 12px; text-align: center; }
-        #signature-pad-canvas { border: 1px solid #ccc; border-radius: 8px; }
-        #keyboard-input { padding: 8px; margin: 10px 0; width: calc(100% - 16px); box-sizing: border-box; }
+        .modal-content { background: #fff; padding: 20px; border-radius: 12px; text-align: center; max-width: 500px; width: 90%;}
+        #signature-pad-canvas { border: 1px solid #ccc; border-radius: 8px; max-width: 100%; }
     </style>
 </head>
-<body>
-<h1>고객 페이지</h1>
+<body class="bg-light">
 
-<div class="card" id="waiting-ui">
-    <h2>상담 대기 중...</h2>
-    <p id="status">상담사와 연결을 위해 대기열에 등록하고 있습니다.</p>
-    <p class="hint">이 페이지를 닫지 마세요.</p>
-</div>
-
-<div class="card" id="call-ui">
-    <button id="btnEndCall" style="margin-top:8px;">통화 종료</button>
-
-    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-        <div style="flex:1; min-width: 320px;">
-            <div class="hint">Local</div>
-            <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
-        </div>
-        <div style="flex:1; min-width: 320px;">
-            <div class="hint">Remote</div>
-            <video id="remoteVideo" autoplay playsinline style="transform: scaleX(-1);"></video>
+<!-- Waiting UI (Centered) -->
+<div id="waiting-ui" class="d-flex justify-content-center align-items-center h-100">
+    <div class="card text-center shadow-sm">
+        <div class="card-body p-5">
+            <h1 class="card-title">상담 대기</h1>
+            <p id="status" class="lead mt-3">상담사와 연결을 위해 대기열에 등록하고 있습니다.</p>
+            <div class="spinner-border text-primary mt-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-4">이 페이지를 닫지 마세요.</p>
         </div>
     </div>
 </div>
 
-<!-- Co-browsing UI -->
-<div class="card" id="co-browsing-container">
-    <h3>공유 문서</h3>
-    <div id="pdf-viewer-container">
-        <div id="agent-cursor"></div>
-        <!-- PDF canvas will be inserted here -->
-    </div>
-    <div id="pdf-pagination-controls">
-        <button id="pdf-prev" disabled>&laquo; 이전</button>
-        <span id="pdf-page-info"></span>
-        <button id="pdf-next" disabled>다음 &raquo;</button>
-    </div>
+
+<!-- Call UI -->
+<div class="main-container" id="call-ui" style="display: none;">
+    <!-- Left Sidebar for Videos and Controls -->
+    <aside id="video-sidebar">
+        <h5>상담</h5>
+        <div class="d-grid gap-2 mb-4">
+            <button id="btnEndCall" class="btn btn-danger">상담 종료</button>
+        </div>
+        
+        <div class="card mb-3">
+            <div class="card-header">Agent</div>
+            <div class="card-body p-1">
+                <video id="remoteVideo" autoplay playsinline style="transform: scaleX(-1);"></video>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Me</div>
+            <div class="card-body p-1">
+                <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content for Co-browsing -->
+    <main id="main-content">
+        <!-- Logo View (shown when not co-browsing) -->
+        <div id="logo-view">
+            <img src="/images/fermi-logo.svg" alt="Fermi Logo">
+            <p class="lead mt-3 text-muted">상담사가 문서를 공유하면 여기에 표시됩니다.</p>
+        </div>
+
+        <!-- Co-browsing UI (initially hidden) -->
+        <div id="co-browsing-container" style="display: none;">
+            <div id="pdf-viewer-container" class="position-relative">
+                <div id="agent-cursor"></div>
+                <!-- Canvas for PDF page will be inserted here -->
+            </div>
+            <div id="pdf-pagination-controls" class="d-flex justify-content-center align-items-center gap-3 mt-3">
+                <button id="pdf-prev" class="btn btn-outline-primary" disabled>&laquo; 이전</button>
+                <span id="pdf-page-info" class="fw-bold"></span>
+                <button id="pdf-next" class="btn btn-outline-primary" disabled>다음 &raquo;</button>
+            </div>
+        </div>
+    </main>
 </div>
 
-<!-- Signature Modal -->
+<!-- Signature & Keyboard Modals -->
 <div class="modal-overlay" id="signature-modal">
     <div class="modal-content">
         <p>아래 영역에 서명해주세요.</p>
         <canvas id="signature-pad-canvas" width="400" height="200"></canvas>
-        <div>
-            <button id="signature-clear">다시 서명</button>
-            <button id="signature-confirm">서명 완료</button>
-        </div>
+        <div><button id="signature-clear">다시 서명</button><button id="signature-confirm">서명 완료</button></div>
     </div>
 </div>
-
-<!-- Keyboard Input Modal -->
 <div class="modal-overlay" id="keyboard-modal">
     <div class="modal-content">
         <p>텍스트를 입력해주세요.</p>
         <input type="text" id="keyboard-input" placeholder="여기에 입력하세요" />
-        <div>
-            <button id="keyboard-cancel">취소</button>
-            <button id="keyboard-confirm">확인</button>
-        </div>
+        <div><button id="keyboard-cancel">취소</button><button id="keyboard-confirm">확인</button></div>
     </div>
 </div>
 
-
 <!-- JS Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
@@ -126,24 +168,20 @@
 <script>
     const $ = (id) => document.getElementById(id);
 
-    let roomId = "";
-    let customerId = `customer_${Math.random().toString(36).substring(2, 9)}`;
-    let ws = null;
-    let pc = null;
-    let localStream = null;
-    let dataChannel = null;
+    let roomId = "", customerId = `customer_${Math.random().toString(36).substring(2, 9)}`, ws = null, pc = null, localStream = null, dataChannel = null;
+    let signaturePad = null, isController = false, pdfDoc = null, currentPageNum = 1, pdfIsLoading = false, pdfFields = [], fieldValues = {}, activeField = null;
 
-    // Co-browsing state
-    let signaturePad = null;
-    let isController = false;
-    let pdfDoc = null;
-    let currentPageNum = 1;
-    let pdfIsLoading = false;
-    let pdfFields = []; // Stores field definitions from JSON
-    let fieldValues = {}; // Stores current values for fields (signature image, checkbox state, text)
-    let activeField = null; // The field currently being interacted with via a modal (signature, keyboard)
-    // Checkboxes are now always active, so no special state is needed for highlighting.
+    function getCurrentPdfScale(page) {
+        const container = $("pdf-viewer-container");
+        const mainContent = $("main-content");
+        if (!page) return 1.0;
 
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
+        const scaleToWidth = container.clientWidth / unscaledViewport.width;
+        const scaleToHeight = (mainContent.clientHeight - 40) / unscaledViewport.height; 
+        
+        return Math.min(scaleToWidth, scaleToHeight);
+    }
 
     function throttle(func, limit) {
         let inThrottle;
@@ -159,110 +197,79 @@
     }
 
     function setText(id, msg) { const el = $(id); if (el) el.textContent = msg; }
-    function show(id, display = 'block') { $(id).style.display = display; }
+    function show(id, display = 'flex') { $(id).style.display = display; }
     function hide(id) { $(id).style.display = 'none'; }
-
-    function getWsUrl() {
-        return `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`;
-    }
-
-    function getApiBase() {
-        return location.origin;
-    }
-
-    function wsSend(type, payload) {
-        const msg = { type, roomId, payload };
-        if (!ws || ws.readyState !== 1) return;
-        ws.send(JSON.stringify(msg));
-    }
-    
-    function dcSend(type, payload) {
-        if (dataChannel && dataChannel.readyState === 'open') {
-            const msg = JSON.stringify({ type, payload });
-            dataChannel.send(msg);
-        }
-    }
-
+    function getWsUrl() { return `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`; }
+    function getApiBase() { return location.origin; }
+    function wsSend(type, payload) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type, roomId, payload }));}
+    function dcSend(type, payload) { if (dataChannel && dataChannel.readyState === 'open') dataChannel.send(JSON.stringify({ type, payload }));}
     function wsRegister() {
         const msg = { type: "register", userId: customerId };
-        ws.send(JSON.stringify(msg));
+        if (ws && ws.readyState === 1) {
+            ws.send(JSON.stringify(msg));
+        }
     }
     
     async function joinQueue() {
         setText("status", "대기열에 등록합니다...");
         try {
             const response = await fetch(`${getApiBase()}/api/queue/join`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ customerId: customerId })
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId })
             });
             if (!response.ok) throw new Error(`대기열 등록 실패: ${response.status}`);
             const result = await response.json();
-            setText("status", `대기열에 성공적으로 등록되었습니다. 상담사 배정을 기다려주세요... (Ticket: ${result.ticketId})`);
+            setText("status", `대기열에 등록되었습니다. 상담사 배정을 기다려주세요... (Ticket: ${result.ticketId})`);
         } catch (e) {
             setText("status", `오류 발생: ${e.message}`);
         }
     }
 
     async function startCall() {
-        hide("waiting-ui");
-        show("call-ui");
+        $('waiting-ui').classList.add('d-none');
+        show("call-ui", 'flex');
+        show("logo-view", 'flex');
+        hide("co-browsing-container");
 
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             $("localVideo").srcObject = localStream;
         } catch (e) {
-            setText("status", "X getUserMedia 실패: " + e.message);
+            console.error("getUserMedia failed:", e);
             return;
         }
 
         const iceConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         pc = new RTCPeerConnection(iceConfiguration);
-
         pc.ondatachannel = (event) => {
             dataChannel = event.channel;
             dataChannel.onmessage = handleDataChannelMessage;
-            dataChannel.onopen = () => {};
-            dataChannel.onclose = () => {};
         };
-
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
         pc.ontrack = (event) => { $("remoteVideo").srcObject = event.streams[0]; };
         pc.onicecandidate = (event) => { if (event.candidate) wsSend("candidate", event.candidate); };
-
-
         wsSend("join", {});
     }
 
-    // --- Modified cleanup to include highlight clearing ---
     function cleanup() {
         if (pc) pc.close();
         if (localStream) localStream.getTracks().forEach(t => t.stop());
         if (ws && ws.readyState === 1) ws.close();
         
         hide("call-ui");
-        hide("co-browsing-container");
-        hide("signature-modal");
-        hide("keyboard-modal");
-        show("waiting-ui");
-        setText("status", "상담이 종료되었습니다.");
+        $('waiting-ui').classList.remove('d-none');
+        setText("status", "상담이 종료되었습니다. 5초 후 페이지가 새로고침됩니다.");
 
-        activeField = null;
+        setTimeout(() => location.reload(), 5000);
     }
-    // ---------------------------------------------------
 
-    // --- Helper to clear any active field state ---
     function clearActiveFields() {
         activeField = null;
         hide('signature-modal');
         hide('keyboard-modal');
     }
-    // --------------------------------------------
 
     function handleDataChannelMessage(event) {
         const msg = JSON.parse(event.data);
-
         switch (msg.type) {
             case 'load_pdf':
                 clearActiveFields();
@@ -272,60 +279,45 @@
                 break;
             case 'page_change':
                 clearActiveFields();
-                if (!isController) {
-                    renderPage(msg.payload.page);
-                }
+                if (!isController) renderPage(msg.payload.page);
                 break;
             case 'mouse':
                 if (!isController) {
+                    const container = $("pdf-viewer-container");
+                    const canvas = container.querySelector('canvas');
+                    if (!canvas) return;
+
+                    // Calculate pixel position relative to the canvas
+                    const pixelX = msg.payload.x * canvas.width;
+                    const pixelY = msg.payload.y * canvas.height;
+
                     const cursor = $('agent-cursor');
-                    cursor.style.left = msg.payload.x + 'px';
-                    cursor.style.top = msg.payload.y + 'px';
-                    show(cursor.id);
-                }
-                break;
-            case 'control_change':
-                clearActiveFields();
-                isController = msg.payload.controller === 'customer';
-                if (isController) {
-                    hide('agent-cursor');
+                    // Position cursor relative to the container, accounting for canvas offset
+                    cursor.style.left = (canvas.offsetLeft + pixelX) + 'px';
+                    cursor.style.top = (canvas.offsetTop + pixelY) + 'px';
+                    show(cursor.id, 'block');
                 }
                 break;
             case 'field_activation':
-                // Clear any previous state before activating a new field
                 clearActiveFields();
-                
                 const fieldToActivate = pdfFields.find(f => f.fieldId === msg.payload.fieldId);
-                if (!fieldToActivate) {
-                    return;
-                }
-
+                if (!fieldToActivate) return;
+                activeField = fieldToActivate;
                 switch (fieldToActivate.type) {
                     case 'signature':
-                        activeField = fieldToActivate;
                         show('signature-modal', 'flex');
-                        if (!signaturePad) {
-                            const canvas = $('signature-pad-canvas');
-                            signaturePad = new SignaturePad(canvas);
-                        } else {
-                            signaturePad.clear();
-                        }
-                        break;
-                    case 'checkbox':
-                        // Checkboxes are always active, so agent activations are ignored.
-                        uiLog("Checkbox activation is ignored, they are always active.");
+                        if (!signaturePad) signaturePad = new SignaturePad($('signature-pad-canvas'));
+                        else signaturePad.clear();
                         break;
                     case 'keyboard':
-                        activeField = fieldToActivate;
                         show('keyboard-modal', 'flex');
-                        $('keyboard-input').value = fieldValues[activeField.fieldId] || ''; // Pre-fill
+                        $('keyboard-input').value = fieldValues[activeField.fieldId] || '';
                         $('keyboard-input').focus();
                         break;
                 }
                 break;
             case 'field_updated':
                 fieldValues[msg.payload.fieldId] = msg.payload.value;
-                // The concept of a single highlighted field is gone, so no need to clear it.
                 renderPage(currentPageNum);
                 break;
         }
@@ -336,102 +328,71 @@
         const fieldsOnPage = pdfFields.filter(f => f.page === pageNumber);
         for (const field of fieldsOnPage) {
             const value = fieldValues[field.fieldId];
+            if (!value) continue;
             const { x, y, width, height } = field.rect;
-            
-            // FIX 1: Scale coordinates
-            const scaledX = x * scale;
-            const scaledWidth = width * scale;
-            const scaledHeight = height * scale;
-            const scaledY = y * scale;
-
             if (field.type === 'signature') {
-                if (value) { // Only draw if there is a signature
-                    const img = new Image();
-                    img.src = value;
-                    await new Promise(resolve => img.onload = resolve);
-                    canvasContext.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
-                }
-            } else if (field.type === 'checkbox') {
-                if (value === true) {
-                    canvasContext.font = `${scaledHeight * 0.8}px Arial`;
-                    canvasContext.fillStyle = 'green';
-                    canvasContext.fillText('✔', scaledX, scaledY + scaledHeight * 0.9);
-                }
+                const img = new Image();
+                img.src = value;
+                await new Promise(resolve => img.onload = resolve);
+                canvasContext.drawImage(img, x * scale, y * scale, width * scale, height * scale);
+            } else if (field.type === 'checkbox' && value === true) {
+                canvasContext.font = `${height * scale * 0.8}px Arial`;
+                canvasContext.fillStyle = 'green';
+                canvasContext.fillText('✔', x * scale, y * scale + height * scale * 0.9);
             } else if (field.type === 'keyboard') {
-                canvasContext.font = `${scaledHeight * 0.7}px Arial`;
+                canvasContext.font = `${height * scale * 0.7}px Arial`;
                 canvasContext.fillStyle = 'black';
-                // FIX 2: Use || '' to prevent "undefined"
-                canvasContext.fillText(value || '', scaledX, scaledY + scaledHeight * 0.7);
+                canvasContext.fillText(value || '', x * scale, y * scale + height * scale * 0.7);
             }
         }
     }
 
-    // --- New function to draw overlays for all active checkboxes ---
     function drawCheckboxOverlays(context, viewport, pageNumber) {
         const scale = viewport.scale;
         const fieldsOnPage = pdfFields.filter(f => f.page === pageNumber && f.type === 'checkbox');
-
-        for (const field of fieldsOnPage) {
+        fieldsOnPage.forEach(field => {
             const { x, y, width, height } = field.rect;
-            const scaledX = x * scale;
-            const scaledWidth = width * scale;
-            const scaledHeight = height * scale;
-            const scaledY = y * scale;
-
             context.save();
-            context.fillStyle = "rgba(0, 128, 0, 0.25)"; // Semi-transparent green
-            context.fillRect(scaledX, scaledY, scaledWidth, scaledHeight);
+            context.fillStyle = "rgba(0, 128, 0, 0.25)";
+            context.fillRect(x * scale, y * scale, width * scale, height * scale);
             context.strokeStyle = "green";
             context.lineWidth = 1;
-            context.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
+            context.strokeRect(x * scale, y * scale, width * scale, height * scale);
             context.restore();
-        }
+        });
     }
-    // ------------------------------------------
 
     async function loadPdf(url) {
-        show('co-browsing-container');
-        
+        hide('logo-view');
+        show('co-browsing-container', 'block');
         try {
             pdfDoc = await pdfjsLib.getDocument(url).promise;
             currentPageNum = 1;
-            
             clearActiveFields();
             fieldValues = {};
-
             renderPage(currentPageNum);
-        } catch (error) {
-        }
+        } catch (error) { console.error("Error loading PDF", error); }
     }
 
     async function renderPage(num) {
         if (pdfIsLoading || !pdfDoc) return;
         pdfIsLoading = true;
-
         const page = await pdfDoc.getPage(num);
 
+        const scale = getCurrentPdfScale(page);
+        const viewport = page.getViewport({ scale });
+        
         const container = $("pdf-viewer-container");
-        const scale = container.clientWidth / page.getViewport({ scale: 1.0 }).width;
-        const viewport = page.getViewport({ scale: scale });
-
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        
         container.innerHTML = '<div id="agent-cursor"></div>';
         container.appendChild(canvas);
-        
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
-        
+        await page.render({ canvasContext: context, viewport }).promise;
         await drawFieldValues(num, context, viewport);
-
-        // --- Draw overlays for all checkboxes ---
         drawCheckboxOverlays(context, viewport, num);
-        // ----------------------------------------------------
-
         pdfIsLoading = false;
-
         currentPageNum = num;
         $("pdf-page-info").textContent = `${num} / ${pdfDoc.numPages}`;
         $("pdf-prev").disabled = num <= 1 || !isController;
@@ -439,24 +400,21 @@
     }
     
     // ===== Boot =====
-    (function init() {
+    document.addEventListener("DOMContentLoaded", () => {
         setText("status", "서버에 연결 중...");
         ws = new WebSocket(getWsUrl());
-
-        ws.onopen = () => {
-            wsRegister();
-            joinQueue();
+        ws.onopen = () => { 
+            wsRegister(); 
+            // Don't join queue immediately, wait for registration success
         };
-
-        ws.onclose = () => {};
-        ws.onerror = () => {};
-
+        ws.onclose = () => { setText("status", "연결이 끊겼습니다. 페이지를 새로고침해주세요."); };
         ws.onmessage = async (evt) => {
             let msg;
-            try { msg = JSON.parse(evt.data); } 
-            catch (e) { return; }
+            try { msg = JSON.parse(evt.data); } catch (e) { return; }
 
-            if (msg.type === "session-matched") {
+            if (msg.type === "register-success") {
+                joinQueue(); // Now join the queue
+            } else if (msg.type === "session-matched") {
                 roomId = msg.sessionId;
                 await startCall();
             } else if (msg.type === "offer") {
@@ -465,35 +423,23 @@
                 await pc.setLocalDescription(answer);
                 wsSend("answer", pc.localDescription);
             } else if (msg.type === "candidate") {
-                 try { await pc.addIceCandidate(msg.payload); } 
-                 catch(e) { }
+                 try { await pc.addIceCandidate(msg.payload); } catch(e) {}
             } else if (msg.type === "ended") {
                 cleanup();
             }
         };
 
-        $("btnEndCall").onclick = () => {
-            wsSend("ended", { reason: "customer_click" });
-            cleanup();
-        };
-
-        // Signature pad event handlers
+        $("btnEndCall").onclick = () => { wsSend("ended", { reason: "customer_click" }); cleanup(); };
         $('signature-clear').onclick = () => signaturePad.clear();
         $('signature-confirm').onclick = () => {
-            if (!activeField) return;
-            if (signaturePad.isEmpty()) {
-                alert("서명을 먼저 입력해주세요.");
-            } else {
-                const signatureImage = signaturePad.toDataURL();
-                fieldValues[activeField.fieldId] = signatureImage;
-                dcSend('field_updated', { fieldId: activeField.fieldId, value: signatureImage });
-                hide('signature-modal');
-                activeField = null;
-                renderPage(currentPageNum);
-            }
+            if (!activeField || signaturePad.isEmpty()) return;
+            const signatureImage = signaturePad.toDataURL();
+            fieldValues[activeField.fieldId] = signatureImage;
+            dcSend('field_updated', { fieldId: activeField.fieldId, value: signatureImage });
+            hide('signature-modal');
+            activeField = null;
+            renderPage(currentPageNum);
         };
-
-        // Keyboard input modal handlers
         $('keyboard-confirm').onclick = () => {
             if (!activeField) return;
             const inputText = $('keyboard-input').value;
@@ -503,81 +449,52 @@
             activeField = null;
             renderPage(currentPageNum);
         };
-        $('keyboard-cancel').onclick = () => {
-            hide('keyboard-modal');
-            activeField = null;
-        };
-
-
+        $('keyboard-cancel').onclick = () => { hide('keyboard-modal'); activeField = null; };
         $("pdf-prev").onclick = () => {
-            if (currentPageNum <= 1 || !isController) return;
-            clearActiveFields();
-            renderPage(currentPageNum - 1);
-            dcSend('page_change', { page: currentPageNum });
+            if (currentPageNum > 1 && isController) {
+                clearActiveFields();
+                renderPage(currentPageNum - 1);
+                dcSend('page_change', { page: currentPageNum });
+            }
         };
-
         $("pdf-next").onclick = () => {
-            if (currentPageNum >= pdfDoc.numPages || !isController) return;
-            clearActiveFields();
-            renderPage(currentPageNum + 1);
-            dcSend('page_change', { page: currentPageNum });
+            if (currentPageNum < pdfDoc.numPages && isController) {
+                clearActiveFields();
+                renderPage(currentPageNum + 1);
+                dcSend('page_change', { page: currentPageNum });
+            }
         };
 
-        const throttledMouse = throttle((e) => {
+        $("pdf-viewer-container").addEventListener('mousemove', throttle((e) => {
             if (!isController) return;
             const container = $("pdf-viewer-container");
             const rect = container.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            dcSend('mouse', { x, y });
-        }, 50);
+            dcSend('mouse', { x: e.clientX - rect.left, y: e.clientY - rect.top });
+        }, 50));
 
-        $("pdf-viewer-container").addEventListener('mousemove', throttledMouse);
-
-        // --- New click listener for customer to interact with checkbox fields ---
         $("pdf-viewer-container").addEventListener('click', async (e) => {
             const container = $("pdf-viewer-container");
             const canvas = container.querySelector('canvas');
             if (!canvas || !pdfDoc) return;
-
             const page = await pdfDoc.getPage(currentPageNum);
-            const scale = container.clientWidth / page.getViewport({ scale: 1.0 }).width;
-
+            const scale = getCurrentPdfScale(page);
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
-
-            // Find which checkbox was clicked
             const checkboxesOnPage = pdfFields.filter(f => f.page === currentPageNum && f.type === 'checkbox');
-
             for (const field of checkboxesOnPage) {
                 const { x, y, width, height } = field.rect;
-                const scaledX = x * scale;
-                const scaledWidth = width * scale;
-                const scaledHeight = height * scale;
-                const scaledY = y * scale;
-
-                if (clickX >= scaledX && clickX <= scaledX + scaledWidth &&
-                    clickY >= scaledY && clickY <= scaledY + scaledHeight) {
-                    
+                const scaledX = x * scale, scaledY = y * scale, scaledWidth = width * scale, scaledHeight = height * scale;
+                if (clickX >= scaledX && clickX <= scaledX + scaledWidth && clickY >= scaledY && clickY <= scaledY + scaledHeight) {
                     const fieldId = field.fieldId;
-                    const currentValue = fieldValues[fieldId] || false;
-                    fieldValues[fieldId] = !currentValue;
-
-                    // Send update to agent
-                    dcSend('field_updated', { fieldId: fieldId, value: fieldValues[fieldId] });
-
-                    // Re-render to show the checkmark change. The overlay will be redrawn automatically.
+                    fieldValues[fieldId] = !fieldValues[fieldId];
+                    dcSend('field_updated', { fieldId, value: fieldValues[fieldId] });
                     renderPage(currentPageNum);
-                    
-                    return; // Stop after finding the first clicked checkbox
+                    return;
                 }
             }
         });
-        // -----------------------------------------------------------------------
-
-    })();
+    });
 </script>
-
 </body>
 </html>

@@ -4,36 +4,61 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>상담사 콘솔</title>
+    <!-- Bootstrap and Bootswatch CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/flatly/bootstrap.min.css">
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; padding: 16px; max-width: 960px; margin: 0 auto; }
-        .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-        .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; }
-        button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-        button:disabled { opacity: .5; cursor: not-allowed; }
-        input { padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
-        .hint { color: #555; font-size: 14px; }
-        video { width: 100%; max-height: 320px; background: #000; border-radius: 12px; }
-        pre { background: #f6f6f6; padding: 10px; border-radius: 10px; overflow: auto; height: 120px; }
-        #call-ui, #co-browsing-container { display: none; }
-
-        /* Co-browsing and Modal Styles */
-        #pdf-viewer-container {
-            position: relative;
-            width: 100%;
-            /* height is set by canvas */
-            border: 1px solid #ccc;
-            min-height: 600px; /* Provide a minimum height */
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent body scroll */
         }
-        #pdf-viewer-container canvas {
-            display: block;
-            margin: 0 auto;
+        body {
+            display: flex;
+            flex-direction: column;
         }
-        #pdf-pagination-controls {
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            overflow: hidden; /* Main container handles overflow */
+        }
+        #video-sidebar {
+            flex-shrink: 0;
+            width: 320px;
+            height: 100%;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 1rem;
+        }
+        #main-content {
+            flex-grow: 1;
+            height: 100%;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        #logo-view {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 16px;
-            margin-top: 12px;
+            height: 100%;
+            flex-direction: column;
+            text-align: center;
+        }
+        #logo-view img {
+            max-width: 200px;
+            opacity: 0.8;
+        }
+        #pdf-viewer-container {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            min-height: 70vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        video {
+            width: 100%;
+            border-radius: 0.375rem;
+            background-color: #000;
         }
         #remote-cursor {
             position: absolute;
@@ -41,86 +66,125 @@
             height: 24px;
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231e90ff"><path d="M10.6,12.7L15,17.1c0.4,0.4,0.4,1,0,1.4c-0.4,0.4-1,0.4-1.4,0L9.2,13.4l-2.7,4.2c-0.3,0.5-0.9,0.7-1.4,0.4c-0.5-0.3-0.7-0.9-0.4-1.4l3.1-4.9L3.2,9.6C2.7,9.2,2.6,8.6,3,8.2c0.3-0.5,0.9-0.6,1.4-0.3l4.6,2.9l2.5-4.1c0.3-0.5,0.9-0.7,1.4-0.4c0.5,0.3,0.7,0.9,0.4,1.4L10.6,12.7z"/></svg>');
             background-size: contain;
-            display: none; /* Initially hidden */
+            display: none;
             z-index: 10;
-            pointer-events: none; /* Clicks go through the cursor */
+            pointer-events: none;
         }
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100;
-        }
-        .modal-content { background: #fff; padding: 20px; border-radius: 12px; min-width: 300px; max-width: 500px; }
-        .modal-content h3 { margin-top: 0; }
-        .modal-content ul { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; }
-        .modal-content li { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
-        .modal-content li:hover { background: #f0f0f0; }
-        .modal-close { float: right; cursor: pointer; font-size: 20px; border: none; background: none; }
     </style>
 </head>
-<body>
-<h1>상담사 콘솔</h1>
+<body class="bg-light">
 
-<div class="card">
-    <div class="row">
-        <div>
-            <label for="agentId">Agent ID</label>
-            <input id="agentId" value="agent-1" />
+<!-- Top Bar / Initial Controls -->
+<header class="p-3 mb-3 border-bottom bg-white" id="initial-controls">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+             <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none">
+                <h4>상담사 콘솔</h4>
+            </a>
+            <div class="ms-auto">
+                <div class="row align-items-end g-2">
+                    <div class="col-auto">
+                        <label for="agentId" class="form-label">Agent ID</label>
+                        <input id="agentId" class="form-control" value="agent-1" />
+                    </div>
+                    <div class="col-auto">
+                        <button id="btnGoOnline" class="btn btn-primary w-100">온라인</button>
+                    </div>
+                    <div class="col-auto">
+                        <button id="btnNextCall" class="btn btn-success w-100" disabled>다음 통화</button>
+                    </div>
+                </div>
+            </div>
         </div>
-        <button id="btnGoOnline">온라인</button>
-        <button id="btnNextCall" disabled>다음 통화</button>
     </div>
-    <p id="status" class="hint" style="margin-top: 1rem;">오프라인 상태입니다. '온라인' 버튼을 눌러 상담을 시작하세요.</p>
-    <div id="queueStatus" class="hint" style="font-weight: bold;"></div>
+</header>
+<p id="status" class="container text-muted">오프라인 상태입니다. '온라인' 버튼을 눌러 상담을 시작하세요.</p>
+<p id="queueStatus" class="container fw-bold text-primary"></p>
+
+
+<!-- Call UI -->
+<div class="main-container" id="call-ui" style="display: none;">
+    <!-- Left Sidebar for Videos and Controls -->
+    <aside id="video-sidebar">
+        <h5>상담 제어</h5>
+        <div class="d-grid gap-2 mb-4">
+            <button id="btnSharePdf" class="btn btn-info" disabled>PDF 공유</button>
+            <button id="btnEndCall" class="btn btn-danger">상담 종료</button>
+        </div>
+        
+        <div class="card mb-3">
+            <div class="card-header">Remote</div>
+            <div class="card-body p-1">
+                <video id="remoteVideo" autoplay playsinline style="transform: scaleX(-1);"></video>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Local</div>
+            <div class="card-body p-1">
+                <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
+            </div>
+        </div>
+
+        <!-- Call Quality Stats -->
+        <div class="card mt-3">
+            <div class="card-header">통화 품질</div>
+            <div class="card-body" id="stats-panel">
+                <small class="text-muted">
+                    <p class="mb-1">RTT: <span id="stats-rtt">-</span> ms</p>
+                    <p class="mb-1">Jitter: <span id="stats-jitter">-</span> s</p>
+                    <p class="mb-1">Packet Loss: <span id="stats-packet-loss">-</span></p>
+                    <p class="mb-0">Bitrate: <span id="stats-bitrate">-</span> kbps</p>
+                </small>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content for Co-browsing -->
+    <main id="main-content">
+        <!-- Logo View (shown when not co-browsing) -->
+        <div id="logo-view">
+            <img src="/images/fermi-logo.svg" alt="Fermi Logo">
+            <p class="lead mt-3 text-muted">PDF를 공유하여 코브라우징을 시작하세요.</p>
+        </div>
+
+        <!-- Co-browsing UI (initially hidden) -->
+        <div id="co-browsing-container" style="display: none;">
+            <div id="pdf-viewer-container" class="position-relative">
+                <div id="remote-cursor"></div>
+                <!-- Canvas for PDF page will be inserted here -->
+            </div>
+            <div id="pdf-pagination-controls" class="d-flex justify-content-center align-items-center gap-3 mt-3">
+                <button id="pdf-prev" class="btn btn-outline-primary" disabled>&laquo; 이전</button>
+                <span id="pdf-page-info" class="fw-bold"></span>
+                <button id="pdf-next" class="btn btn-outline-primary" disabled>다음 &raquo;</button>
+            </div>
+        </div>
+    </main>
 </div>
 
-<div class="card" id="call-ui">
-    <div class="row">
-        <button id="btnEndCall">상담 종료</button>
-        <button id="btnSharePdf" disabled>PDF 공유</button>
-        <button id="btnRequestSignature" disabled>서명 요청</button>
-        <button id="btnControl" disabled>제어권 전달</button>
-    </div>
-    <div class="row" style="margin-top: 1rem;">
-        <div style="flex:1;">
-        </div>
-    </div>
-    <div class="row" style="margin-top: 1rem; gap: 1rem;">
-        <div style="flex:1; min-width: 320px;">
-            <div class="hint">Local</div>
-            <video id="localVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
-        </div>
-        <div style="flex:1; min-width: 320px;">
-            <div class="hint">Remote</div>
-            <video id="remoteVideo" autoplay playsinline style="transform: scaleX(-1);"></video>
-        </div>
-    </div>
-</div>
-
-<!-- Co-browsing UI -->
-<div class="card" id="co-browsing-container">
-    <h3>코브라우징</h3>
-    <div id="pdf-viewer-container">
-        <!-- Canvas for PDF page will be inserted here -->
-        <div id="remote-cursor"></div>
-    </div>
-    <div id="pdf-pagination-controls">
-        <button id="pdf-prev" disabled>&laquo; 이전</button>
-        <span id="pdf-page-info"></span>
-        <button id="pdf-next" disabled>다음 &raquo;</button>
-    </div>
-</div>
 
 <!-- PDF Selection Modal -->
-<div class="modal-overlay" id="pdf-modal">
-    <div class="modal-content">
-        <button class="modal-close" id="pdf-modal-close">&times;</button>
-        <h3>공유할 PDF 선택</h3>
-        <ul id="pdf-list"></ul>
+<div class="modal fade" id="pdf-modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">공유할 PDF 선택</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="pdf-list" class="list-group">
+                    <!-- PDF items will be inserted here -->
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
 
 <!-- PDF.js script -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
 </script>
@@ -135,6 +199,7 @@
     let localStream = null;
     let queueStatusPoller = null;
     let dataChannel = null;
+    let pdfModal = null;
 
     // Co-browsing state
     let isController = false;
@@ -144,7 +209,21 @@
     let pdfFields = []; // Stores field definitions from JSON
     let fieldValues = {}; // Stores current values for fields (signature image, checkbox state, text)
 
+    // Stats variables
+    let statsIntervalId = null;
+    let lastStatsReport = null;
 
+    function getCurrentPdfScale(page) {
+        const container = $("pdf-viewer-container");
+        const mainContent = $("main-content");
+        if (!page) return 1.0;
+
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
+        const scaleToWidth = container.clientWidth / unscaledViewport.width;
+        const scaleToHeight = (mainContent.clientHeight - 40) / unscaledViewport.height; 
+        
+        return Math.min(scaleToWidth, scaleToHeight);
+    }
     function throttle(func, limit) {
         let inThrottle;
         return function() {
@@ -159,16 +238,11 @@
     }
 
     function setText(id, msg) { const el = $(id); if (el) el.textContent = msg; }
-    function show(id, display = 'block') { $(id).style.display = display; }
+    function show(id, display = 'flex') { $(id).style.display = display; }
     function hide(id) { $(id).style.display = 'none'; }
 
-    function getWsUrl() {
-        return `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`;
-    }
-
-    function getApiBase() {
-        return location.origin;
-    }
+    function getWsUrl() { return `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`; }
+    function getApiBase() { return location.origin; }
 
     async function updateQueueSize() {
         try {
@@ -183,108 +257,143 @@
     }
 
     function wsSend(type, payload) {
-        const msg = { type, roomId, payload };
-        if (!ws || ws.readyState !== 1) return;
-        ws.send(JSON.stringify(msg));
+        if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type, roomId, payload }));
     }
     
     function dcSend(type, payload) {
-        if (dataChannel && dataChannel.readyState === 'open') {
-            const msg = JSON.stringify({ type, payload });
-            dataChannel.send(msg);
-        }
+        if (dataChannel && dataChannel.readyState === 'open') dataChannel.send(JSON.stringify({ type, payload }));
     }
 
     function wsRegister() {
         const msg = { type: "register", userId: agentId };
-        ws.send(JSON.stringify(msg));
+        if (ws && ws.readyState === 1) {
+            ws.send(JSON.stringify(msg));
+        }
     }
     
     async function cleanupPeerConnection() {
         if (pc) { try { pc.close(); } catch (e) {} pc = null; }
         if (dataChannel) { try { dataChannel.close(); } catch(e) {} dataChannel = null; }
         
-        setText("pcStatus", "PC: -");
-        setText("iceStatus", "ICE: -");
+        // Stop stats collection
+        if (statsIntervalId) clearInterval(statsIntervalId);
+        statsIntervalId = null;
+        lastStatsReport = null;
+        setText('stats-rtt', '-');
+        setText('stats-jitter', '-');
+        setText('stats-packet-loss', '-');
+        setText('stats-bitrate', '-');
+
         $("remoteVideo").srcObject = null;
         roomId = "";
         
         $("btnEndCall").disabled = true;
         $("btnSharePdf").disabled = true;
-        $("btnControl").disabled = true;
-        $("btnRequestSignature").disabled = true; // Disable the old button
+        
         hide("call-ui");
         hide("co-browsing-container");
-        
+        show("logo-view", 'flex'); // Show logo view after call ends
+        show('initial-controls', 'block'); // Show initial controls again
+
         try {
-            const response = await fetch(`${getApiBase()}/api/agents/${agentId}/available`, { method: "POST" });
-            if (!response.ok) throw new Error("Failed to reset agent status");
-            
+            await fetch(`${getApiBase()}/api/agents/${agentId}/available`, { method: "POST" });
             setText("status", "온라인. 다음 통화를 기다리는 중...");
             $("btnNextCall").disabled = false;
-            
-            updateQueueSize();
             if (queueStatusPoller) clearInterval(queueStatusPoller);
             queueStatusPoller = setInterval(updateQueueSize, 5000);
+            updateQueueSize();
         } catch (e) {
-            setText("status", `상태 초기화 실패: ${e.message}. 페이지를 새로고침하세요.`);
+            setText("status", `상태 초기화 실패: ${e.message}.`);
         }
     }
     
     async function startWebRTC() {
-        if (!localStream) { return; }
-        show("call-ui");
+        if (!localStream) return;
+
+        hide('initial-controls');
+        show("call-ui", 'flex');
+        hide("co-browsing-container");
+        show("logo-view", 'flex'); // Show logo view at the start of a call
+
         $("btnEndCall").disabled = false;
         $("btnSharePdf").disabled = false;
-        $("btnRequestSignature").disabled = true; // Ensure old button is disabled
 
         if (queueStatusPoller) clearInterval(queueStatusPoller);
         setText("queueStatus", "");
 
         const iceConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         pc = new RTCPeerConnection(iceConfiguration);
-
         setupDataChannel();
-
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
         pc.ontrack = (event) => { $("remoteVideo").srcObject = event.streams[0]; };
-        pc.onicecandidate = (event) => { if (event.candidate) { wsSend("candidate", event.candidate); } };
+        pc.onicecandidate = (event) => { if (event.candidate) wsSend("candidate", event.candidate); };
 
+        // Start stats collection
+        if (statsIntervalId) clearInterval(statsIntervalId);
+        statsIntervalId = setInterval(collectAndDisplayStats, 2000);
 
         wsSend("join", {});
     }
 
     function setupDataChannel() {
         dataChannel = pc.createDataChannel("co-browsing");
-        dataChannel.onopen = () => {};
-        dataChannel.onclose = () => {};
         dataChannel.onmessage = handleDataChannelMessage;
+    }
+
+    async function collectAndDisplayStats() {
+        if (!pc) return;
+
+        const stats = await pc.getStats();
+        let newReport = {};
+
+        let rtt = "-";
+        let jitter = "-";
+        let packetsLost = "-";
+        let bitrate = "-";
+
+        stats.forEach(report => {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                if (report.currentRoundTripTime) {
+                    rtt = (report.currentRoundTripTime * 1000).toFixed(0);
+                }
+            }
+            if (report.type === 'inbound-rtp' && report.kind === 'video') {
+                if (typeof report.jitter !== 'undefined') {
+                    jitter = report.jitter.toFixed(4);
+                }
+                if (typeof report.packetsLost !== 'undefined') {
+                    packetsLost = report.packetsLost;
+                }
+            }
+            if (report.type === 'outbound-rtp' && report.kind === 'video') {
+                if (lastStatsReport && lastStatsReport[report.id]) {
+                    const last = lastStatsReport[report.id];
+                    const bytes = report.bytesSent - last.bytesSent;
+                    const time = report.timestamp - last.timestamp;
+                    if (time > 0) {
+                        bitrate = Math.round(8 * bytes / time / 1000); // kbps
+                    }
+                }
+            }
+            newReport[report.id] = report;
+        });
+
+        lastStatsReport = newReport;
+
+        setText('stats-rtt', rtt);
+        setText('stats-jitter', jitter);
+        setText('stats-packet-loss', packetsLost);
+        setText('stats-bitrate', bitrate);
     }
 
     function handleDataChannelMessage(event) {
         const msg = JSON.parse(event.data);
-
-        switch (msg.type) {
-            case 'control_change':
-                isController = msg.payload.controller === 'agent'; // Agent is controller if message says 'agent'
-                const btn = $("btnControl");
-                if (isController) {
-                    btn.textContent = '제어권 전달';
-                    btn.style.backgroundColor = '';
-                } else {
-                    btn.textContent = '제어권 회수';
-                    btn.style.backgroundColor = '#d4edda';
-                }
-                break;
-            case 'field_updated':
-                fieldValues[msg.payload.fieldId] = msg.payload.value;
-                renderPage(currentPageNum); // Re-render current page to show updated field
-                break;
+        if (msg.type === 'field_updated') {
+            fieldValues[msg.payload.fieldId] = msg.payload.value;
+            renderPage(currentPageNum);
         }
     }
     
-    // This function is now more generic to draw any field value
     async function drawFieldValues(pageNumber, canvasContext, viewport) {
         const scale = viewport.scale;
         const fieldsOnPage = pdfFields.filter(f => f.page === pageNumber);
@@ -292,26 +401,19 @@
             const value = fieldValues[field.fieldId];
             if (!value) continue;
             const { x, y, width, height } = field.rect;
-            const scaledX = x * scale;
-            const scaledWidth = width * scale;
-            const scaledHeight = height * scale;
-            const scaledY = y * scale;
-
             if (field.type === 'signature') {
                 const img = new Image();
                 img.src = value;
                 await new Promise(resolve => img.onload = resolve);
-                canvasContext.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
-            } else if (field.type === 'checkbox') {
-                if (value === true) {
-                    canvasContext.font = `${scaledHeight * 0.8}px Arial`;
-                    canvasContext.fillStyle = 'green';
-                    canvasContext.fillText('✔', scaledX, scaledY + scaledHeight * 0.9);
-                }
+                canvasContext.drawImage(img, x * scale, y * scale, width * scale, height * scale);
+            } else if (field.type === 'checkbox' && value === true) {
+                canvasContext.font = `${height * scale * 0.8}px Arial`;
+                canvasContext.fillStyle = 'green';
+                canvasContext.fillText('✔', x * scale, y * scale + height * scale * 0.9);
             } else if (field.type === 'keyboard') {
-                canvasContext.font = `${scaledHeight * 0.7}px Arial`;
+                canvasContext.font = `${height * scale * 0.7}px Arial`;
                 canvasContext.fillStyle = 'black';
-                canvasContext.fillText(value || '', scaledX, scaledY + scaledHeight * 0.7);
+                canvasContext.fillText(value || '', x * scale, y * scale + height * scale * 0.7);
             }
         }
     }
@@ -319,62 +421,31 @@
     function drawFieldOverlays(pageNumber, canvasContext, viewport) {
         const scale = viewport.scale;
         const fieldsOnPage = pdfFields.filter(f => f.page === pageNumber);
-        for (const field of fieldsOnPage) {
+        fieldsOnPage.forEach(field => {
             const { x, y, width, height } = field.rect;
-            const scaledX = x * scale;
-            const scaledWidth = width * scale;
-            const scaledHeight = height * scale;
-            const scaledY = y * scale;
-
             canvasContext.save();
-            canvasContext.globalAlpha = 0.3; // Semi-transparent overlay
-
+            canvasContext.globalAlpha = 0.3;
             switch (field.type) {
-                case 'signature':
-                    canvasContext.fillStyle = 'blue';
-                    break;
-                case 'checkbox':
-                    canvasContext.fillStyle = 'green';
-                    break;
-                case 'keyboard':
-                    canvasContext.fillStyle = 'yellow';
-                    break;
-                default:
-                    canvasContext.fillStyle = 'gray';
+                case 'signature': canvasContext.fillStyle = 'blue'; break;
+                case 'checkbox': canvasContext.fillStyle = 'green'; break;
+                case 'keyboard': canvasContext.fillStyle = 'yellow'; break;
+                default: canvasContext.fillStyle = 'gray';
             }
-            canvasContext.fillRect(scaledX, scaledY, scaledWidth, scaledHeight);
+            canvasContext.fillRect(x * scale, y * scale, width * scale, height * scale);
             canvasContext.restore();
-
-            // Optional: Add text label for field type
-            canvasContext.save();
-            canvasContext.font = `${scaledHeight * 0.2}px Arial`;
-            canvasContext.fillStyle = 'black';
-            canvasContext.fillText(field.type, scaledX + 2, scaledY + scaledHeight - 2);
-            canvasContext.restore();
-        }
+        });
     }
 
     async function startPdfSharing(filename) {
-        isController = true; // Agent is controller by default
-        $("btnControl").disabled = false;
-        $("btnRequestSignature").disabled = true; // Old button disabled
-
+        isController = true;
         try {
             const response = await fetch(`${getApiBase()}/api/documents/${filename}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch document details: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`Failed to fetch document details: ${response.status}`);
             const docData = await response.json();
-
             pdfFields = docData.fields || [];
             fieldValues = {};
-
-            // Send the full data to the customer
             dcSend('load_pdf', docData);
-            
-            // Load the PDF locally
             loadPdf(docData.pdfUrl);
-
         } catch (error) {
             console.error("Error starting PDF sharing:", error);
             alert("PDF 공유를 시작하는 데 실패했습니다.");
@@ -382,8 +453,8 @@
     }
 
     async function loadPdf(url) {
-        show('co-browsing-container');
-        
+        hide('logo-view');
+        show('co-browsing-container', 'block');
         try {
             pdfDoc = await pdfjsLib.getDocument(url).promise;
             currentPageNum = 1;
@@ -397,239 +468,188 @@
     async function renderPage(num) {
         if (pdfIsLoading || !pdfDoc) return;
         pdfIsLoading = true;
-
         const page = await pdfDoc.getPage(num);
         
-        const container = $("pdf-viewer-container"); // Re-add container definition
-        const scale = container.clientWidth / page.getViewport({ scale: 1.0 }).width;
-        const viewport = page.getViewport({ scale: scale });
+        const scale = getCurrentPdfScale(page);
+        const viewport = page.getViewport({ scale });
+
+        const container = $("pdf-viewer-container");
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        
-
-        // Clear container and append new canvas
         container.innerHTML = '<div id="remote-cursor"></div>';
         container.appendChild(canvas);
-        
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
-        
-        // Draw field overlays and values
+        await page.render({ canvasContext: context, viewport }).promise;
         drawFieldOverlays(num, context, viewport);
-        await drawFieldValues(num, context, viewport); // Await drawing values that might be images
-
+        await drawFieldValues(num, context, viewport);
         pdfIsLoading = false;
-
-        // Update UI
         currentPageNum = num;
         $("pdf-page-info").textContent = `${num} / ${pdfDoc.numPages}`;
         $("pdf-prev").disabled = num <= 1;
         $("pdf-next").disabled = num >= pdfDoc.numPages;
     }
 
-
     // ===== Bootstrapping and Event Handlers =====
+    document.addEventListener("DOMContentLoaded", () => {
+        pdfModal = new bootstrap.Modal($('pdf-modal'));
 
-    $("btnGoOnline").onclick = async () => {
-        agentId = $("agentId").value.trim();
-        if (!agentId) { alert("상담사 ID를 입력하세요."); return; }
-
-        $("btnGoOnline").disabled = true;
-        setText("status", "카메라/마이크 권한을 허용해주세요...");
-
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            $("localVideo").srcObject = localStream;
-        } catch (e) {
-            setText("status", `미디어 접근 실패: ${e.message}`);
-            $("btnGoOnline").disabled = false;
-            return;
-        }
-
-        setText("status", "서버에 연결 중...");
-        ws = new WebSocket(getWsUrl());
-
-        ws.onopen = async () => {
-            wsRegister();
+        $("btnGoOnline").onclick = async () => {
+            agentId = $("agentId").value.trim();
+            if (!agentId) { alert("상담사 ID를 입력하세요."); return; }
+            $("btnGoOnline").disabled = true;
+            setText("status", "카메라/마이크 권한을 허용해주세요...");
             try {
-                const response = await fetch(`${getApiBase()}/api/agents/${agentId}/available`, { method: "POST" });
-                if (!response.ok) throw new Error("Failed to set agent as available");
-                
-                setText("status", "온라인. '다음 통화' 버튼을 눌러주세요.");
-                $("btnNextCall").disabled = false;
-                $("agentId").disabled = true;
-
-                updateQueueSize();
-                if (queueStatusPoller) clearInterval(queueStatusPoller);
-                queueStatusPoller = setInterval(updateQueueSize, 5000);
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                $("localVideo").srcObject = localStream;
             } catch (e) {
-                setText("status", `온라인 전환 실패: ${e.message}`);
+                setText("status", `미디어 접근 실패: ${e.message}`);
                 $("btnGoOnline").disabled = false;
+                return;
+            }
+            setText("status", "서버에 연결 중...");
+            ws = new WebSocket(getWsUrl());
+            ws.onopen = async () => {
+                wsRegister();
+                try {
+                    await fetch(`${getApiBase()}/api/agents/${agentId}/available`, { method: "POST" });
+                    setText("status", "온라인. '다음 통화' 버튼을 눌러주세요.");
+                    $("btnNextCall").disabled = false;
+                    $("agentId").disabled = true;
+                    if (queueStatusPoller) clearInterval(queueStatusPoller);
+                    queueStatusPoller = setInterval(updateQueueSize, 5000);
+                    updateQueueSize();
+                } catch (e) {
+                    setText("status", `온라인 전환 실패: ${e.message}`);
+                    $("btnGoOnline").disabled = false;
+                }
+            };
+            ws.onclose = () => { if (queueStatusPoller) clearInterval(queueStatusPoller); };
+            ws.onmessage = async (evt) => {
+                let msg;
+                try { msg = JSON.parse(evt.data); } catch (e) { console.error("JSON parse failed", e); return; }
+                if (msg.type === "session-matched" && msg.agentId === agentId) {
+                    roomId = msg.sessionId;
+                    setText("status", `고객(${msg.customerId})과 연결되었습니다.`);
+                    await startWebRTC();
+                } else if (msg.type === "peer_ready" && msg.roomId === roomId) {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    wsSend("offer", offer);
+                } else if (msg.type === "answer" && pc) {
+                    await pc.setRemoteDescription(msg.payload);
+                } else if (msg.type === "candidate" && pc) {
+                    try { await pc.addIceCandidate(msg.payload); } catch(e) { console.error(e); }
+                } else if (msg.type === "ended") {
+                    await cleanupPeerConnection();
+                }
+            };
+        };
+
+        $("btnNextCall").onclick = async () => {
+            if (!agentId) return;
+            setText("status", "다음 고객을 찾는 중...");
+            $("btnNextCall").disabled = true;
+            try {
+                const response = await fetch(`${getApiBase()}/api/matching/next`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agentId })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                     setText("status", `매칭 실패: ${result.reason || '알 수 없는 오류'}.`);
+                     $("btnNextCall").disabled = false;
+                } else {
+                    setText("status", "고객과 매칭되었습니다.");
+                }
+            } catch (e) {
+                setText("status", `매칭 요청 중 오류 발생: ${e.message}`);
+                $("btnNextCall").disabled = false;
             }
         };
 
-        ws.onclose = () => {
-             if (queueStatusPoller) clearInterval(queueStatusPoller);
+        $("btnEndCall").onclick = async () => {
+            wsSend("ended", { reason: "agent_click" });
+            await cleanupPeerConnection();
         };
-        ws.onerror = () => { };
-        
-        ws.onmessage = async (evt) => {
-            let msg;
-            try { msg = JSON.parse(evt.data); } 
-            catch (e) { console.error("JSON parse failed", e, evt.data); return; }
 
-            if (msg.type === "session-matched" && msg.agentId === agentId) {
-                roomId = msg.sessionId;
-                setText("status", `고객(${msg.customerId})과 연결되었습니다. 통화를 시작합니다...`);
-                await startWebRTC();
-            }
-            else if (msg.type === "peer_ready" && msg.roomId === roomId) {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                wsSend("offer", offer);
-            }
-            else if (msg.type === "answer") {
-                if(pc) await pc.setRemoteDescription(msg.payload);
-            }
-            else if (msg.type === "candidate") {
-                if(pc) { try { await pc.addIceCandidate(msg.payload); } catch(e) { console.error(e); } }
-            }
-            else if (msg.type === "ended") {
-                await cleanupPeerConnection();
+        $("btnSharePdf").onclick = async () => {
+            try {
+                const response = await fetch(`${getApiBase()}/api/documents`);
+                if (!response.ok) throw new Error('Failed to fetch PDF list');
+                const pdfFiles = await response.json();
+                const listEl = $("pdf-list");
+                listEl.innerHTML = '';
+                pdfFiles.forEach(filename => {
+                    const a = document.createElement('a');
+                    a.href = "#";
+                    a.className = 'list-group-item list-group-item-action';
+                    a.textContent = filename;
+                    a.onclick = (e) => {
+                        e.preventDefault();
+                        pdfModal.hide();
+                        startPdfSharing(filename);
+                    };
+                    listEl.appendChild(a);
+                });
+                pdfModal.show();
+            } catch (error) {
+                alert('PDF 목록을 가져오는 데 실패했습니다.');
             }
         };
-    };
 
-    $("btnNextCall").onclick = async () => {
-        if (!agentId) return;
-        setText("status", "다음 고객을 찾는 중...");
-        $("btnNextCall").disabled = true;
-        try {
-            const response = await fetch(`${getApiBase()}/api/matching/next`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ agentId })
-            });
-            const result = await response.json();
-            if (response.ok) {
-                 setText("status", "고객과 매칭되었습니다. WebSocket을 통해 연결됩니다...");
-            } else {
-                 setText("status", `매칭 실패: ${result.reason || '알 수 없는 오류'}. 잠시 후 다시 시도하세요.`);
-                 $("btnNextCall").disabled = false;
+        $("pdf-prev").onclick = () => {
+            if (currentPageNum > 1 && isController) {
+                const newPageNum = currentPageNum - 1;
+                renderPage(newPageNum);
+                dcSend('page_change', { page: newPageNum });
             }
-        } catch (e) {
-            setText("status", `매칭 요청 중 오류 발생: ${e.message}`);
-            $("btnNextCall").disabled = false;
-        }
-    };
+        };
 
-    $("btnEndCall").onclick = async () => {
-        wsSend("ended", { reason: "agent_click" });
-        await cleanupPeerConnection();
-    };
-
-    $("btnSharePdf").onclick = async () => {
-        try {
-            const response = await fetch(`${getApiBase()}/api/documents`);
-            if (!response.ok) throw new Error('Failed to fetch PDF list');
-            const pdfFiles = await response.json();
-            
-            const listEl = $("pdf-list");
-            listEl.innerHTML = '';
-
-            pdfFiles.forEach(filename => {
-                const li = document.createElement('li');
-                li.textContent = filename;
-                li.onclick = () => {
-                    hide('pdf-modal');
-                    startPdfSharing(filename);
-                };
-                listEl.appendChild(li);
-            });
-
-            show('pdf-modal', 'flex');
-        } catch (error) {
-            alert('PDF 목록을 가져오는 데 실패했습니다.');
-        }
-    };
-
-    $("pdf-modal-close").onclick = () => hide('pdf-modal');
-
-    $("pdf-prev").onclick = () => {
-        if (currentPageNum <= 1 || !isController) return;
-        const newPageNum = currentPageNum - 1;
-        renderPage(newPageNum);
-        dcSend('page_change', { page: newPageNum });
-    };
-
-    $("pdf-next").onclick = () => {
-        if (currentPageNum >= pdfDoc.numPages || !isController) return;
-        const newPageNum = currentPageNum + 1;
-        renderPage(newPageNum);
-        dcSend('page_change', { page: newPageNum });
-    };
-
-    const throttledMouse = throttle((e) => {
-        if (!isController) return;
-        const container = $("pdf-viewer-container");
-        const rect = container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        dcSend('mouse', { x, y });
-    }, 50);
-
-    $("pdf-viewer-container").addEventListener('mousemove', throttledMouse);
-
-    // New click handler for field activation
-    $("pdf-viewer-container").addEventListener('click', async (e) => {
-        if (!isController || !pdfDoc || pdfFields.length === 0) return;
-
-        const container = $("pdf-viewer-container");
-        const canvas = container.querySelector('canvas');
-        if (!canvas) return;
-
-        const page = await pdfDoc.getPage(currentPageNum);
-        const scale = container.clientWidth / page.getViewport({ scale: 1.0 }).width;
-        
-        const rect = canvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-
-        const fieldsOnPage = pdfFields.filter(f => f.page === currentPageNum);
-        for (const field of fieldsOnPage) {
-            const { x, y, width, height } = field.rect;
-            const scaledX = x * scale;
-            const scaledWidth = width * scale;
-            const scaledHeight = height * scale;
-            const scaledY = y * scale;
-
-            if (clickX >= scaledX && clickX <= scaledX + scaledWidth &&
-                clickY >= scaledY && clickY <= scaledY + scaledHeight) {
-                dcSend('field_activation', { fieldId: field.fieldId });
-                // Optional: Add visual feedback for clicked field on agent side
-                break;
+        $("pdf-next").onclick = () => {
+            if (currentPageNum < pdfDoc.numPages && isController) {
+                const newPageNum = currentPageNum + 1;
+                renderPage(newPageNum);
+                dcSend('page_change', { page: newPageNum });
             }
-        }
+        };
+
+        $("pdf-viewer-container").addEventListener('mousemove', throttle((e) => {
+            if (!isController) return;
+            const container = $("pdf-viewer-container");
+            const canvas = container.querySelector('canvas');
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            // Calculate normalized coordinates (0.0 to 1.0)
+            const normalizedX = (e.clientX - rect.left) / rect.width;
+            const normalizedY = (e.clientY - rect.top) / rect.height;
+
+            dcSend('mouse', { x: normalizedX, y: normalizedY });
+        }, 50));
+
+        $("pdf-viewer-container").addEventListener('click', async (e) => {
+            if (!isController || !pdfDoc || pdfFields.length === 0) return;
+            const container = $("pdf-viewer-container");
+                    const canvas = container.querySelector('canvas');
+                    if (!canvas) return;
+                    const page = await pdfDoc.getPage(currentPageNum);
+                    const scale = getCurrentPdfScale(page);
+                    
+                    const rect = canvas.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+            const fieldsOnPage = pdfFields.filter(f => f.page === currentPageNum);
+            for (const field of fieldsOnPage) {
+                const { x, y, width, height } = field.rect;
+                if (clickX >= x * scale && clickX <= (x + width) * scale && clickY >= y * scale && clickY <= (y + height) * scale) {
+                    dcSend('field_activation', { fieldId: field.fieldId });
+                    break;
+                }
+            }
+        });
     });
-
-
-    $("btnControl").onclick = () => {
-        isController = !isController;
-        dcSend('control_change', { controller: isController ? 'agent' : 'customer' });
-        const btn = $("btnControl");
-        if (isController) {
-            btn.textContent = '제어권 전달';
-            btn.style.backgroundColor = '';
-        } else {
-            btn.textContent = '제어권 회수';
-            btn.style.backgroundColor = '#d4edda';
-        }
-    };
-
-    // Old btnRequestSignature logic is now obsolete and removed.
-
 </script>
 </body>
 </html>
-
