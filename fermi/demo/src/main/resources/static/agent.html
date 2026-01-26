@@ -311,10 +311,10 @@
             const value = fieldValues[field.fieldId];
             if (!value) continue;
             const { x, y, width, height } = field.rect;
-            const scaledX = x;
-            const scaledWidth = width;
-            const scaledHeight = height;
-            const scaledY = y;
+            const scaledX = x * scale;
+            const scaledWidth = width * scale;
+            const scaledHeight = height * scale;
+            const scaledY = y * scale;
 
             if (field.type === 'signature') {
                 const img = new Image();
@@ -340,10 +340,10 @@
         const fieldsOnPage = pdfFields.filter(f => f.page === pageNumber);
         for (const field of fieldsOnPage) {
             const { x, y, width, height } = field.rect;
-            const scaledX = x;
-            const scaledWidth = width;
-            const scaledHeight = height;
-            const scaledY = y;
+            const scaledX = x * scale;
+            const scaledWidth = width * scale;
+            const scaledHeight = height * scale;
+            const scaledY = y * scale;
 
             canvasContext.save();
             canvasContext.globalAlpha = 0.3; // Semi-transparent overlay

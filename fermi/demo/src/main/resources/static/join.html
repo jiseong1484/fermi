@@ -354,16 +354,20 @@
         for (const field of fieldsOnPage) {
             const value = fieldValues[field.fieldId];
             const { x, y, width, height } = field.rect;
-            const scaledX = x;
-            const scaledWidth = width;
-            const scaledHeight = height;
-            const scaledY = y;
+            
+            // FIX 1: Scale coordinates
+            const scaledX = x * scale;
+            const scaledWidth = width * scale;
+            const scaledHeight = height * scale;
+            const scaledY = y * scale;
 
             if (field.type === 'signature') {
-                const img = new Image();
-                img.src = value;
-                await new Promise(resolve => img.onload = resolve);
-                canvasContext.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
+                if (value) { // Only draw if there is a signature
+                    const img = new Image();
+                    img.src = value;
+                    await new Promise(resolve => img.onload = resolve);
+                    canvasContext.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
+                }
             } else if (field.type === 'checkbox') {
                 if (value === true) {
                     canvasContext.font = `${scaledHeight * 0.8}px Arial`;
@@ -373,22 +377,23 @@
             } else if (field.type === 'keyboard') {
                 canvasContext.font = `${scaledHeight * 0.7}px Arial`;
                 canvasContext.fillStyle = 'black';
-                canvasContext.fillText(value, scaledX, scaledY + scaledHeight * 0.7);
+                // FIX 2: Use || '' to prevent "undefined"
+                canvasContext.fillText(value || '', scaledX, scaledY + scaledHeight * 0.7);
             }
         }
     }
 
     // --- New function to draw overlays for all active checkboxes ---
-    function drawCheckboxOverlays(context, viewport) {
+    function drawCheckboxOverlays(context, viewport, pageNumber) {
         const scale = viewport.scale;
-        const fieldsOnPage = pdfFields.filter(f => f.page === currentPageNum && f.type === 'checkbox');
+        const fieldsOnPage = pdfFields.filter(f => f.page === pageNumber && f.type === 'checkbox');
 
         for (const field of fieldsOnPage) {
             const { x, y, width, height } = field.rect;
-            const scaledX = x;
-            const scaledWidth = width;
-            const scaledHeight = height;
-            const scaledY = y;
+            const scaledX = x * scale;
+            const scaledWidth = width * scale;
+            const scaledHeight = height * scale;
+            const scaledY = y * scale;
 
             context.save();
             context.fillStyle = "rgba(0, 128, 0, 0.25)"; // Semi-transparent green
@@ -459,7 +464,7 @@
         await drawFieldValues(num, context, viewport);
 
         // --- Draw overlays for all checkboxes ---
-        drawCheckboxOverlays(context, viewport);
+        drawCheckboxOverlays(context, viewport, num);
         // ----------------------------------------------------
 
         pdfIsLoading = false;
