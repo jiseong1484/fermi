@@ -48,6 +48,11 @@
     <script>
         const stars = document.querySelectorAll('#rating span');
         const ratingValue = document.getElementById('rating-value');
+        const feedbackForm = document.getElementById('feedback-form');
+        const feedbackContainer = document.querySelector('.feedback-container');
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('sessionId');
 
         stars.forEach((star, index) => {
             star.addEventListener('click', () => {
@@ -60,17 +65,32 @@
             });
         });
 
-        const feedbackForm = document.getElementById('feedback-form');
-        const feedbackContainer = document.querySelector('.feedback-container');
-
         feedbackForm.addEventListener('submit', (event) => {
             event.preventDefault();
             
-            // Here you could send the data to your server, e.g., using fetch()
-            // const rating = ratingValue.value;
-            // const feedbackText = document.getElementById('feedback-text').value;
-            // fetch('/api/feedback', { method: 'POST', body: JSON.stringify({ rating, feedbackText }) });
+            const rating = ratingValue.value;
+            const comment = document.getElementById('feedback-text').value;
+
+            // Send the data to the server
+            fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    sessionId: sessionId, 
+                    rating: parseInt(rating, 10), 
+                    comment: comment 
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Failed to submit feedback');
+                }
+            })
+            .catch(err => console.error('Feedback submission error:', err));
             
+            // Update UI regardless of submission success to provide immediate user feedback
             feedbackContainer.style.opacity = 0;
             setTimeout(() => {
                 feedbackContainer.innerHTML = `
