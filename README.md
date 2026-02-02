@@ -34,7 +34,7 @@
 
 ### 📌 WebRTC 기반 1:1 영상 상담
 - 별도 플러그인 없이 웹 브라우저 간에 직접(P2P) 영상 및 음성 통화를 설정합니다.
-- STUN 서버(`stun.l.google.com:19302`)를 사용하여 NAT 환경의 클라이언트 간 통신을 지원합니다.
+- STUN 서버를 사용하여 NAT 환경의 클라이언트 간 통신을 지원합니다.
 - Spring Boot WebSocket 서버가 시그널링 과정을 안전하게 중계합니다.
 
 ### 📌 PDF 문서 Co-browsing 및 상호작용
@@ -59,8 +59,8 @@
 | | Bootstrap 5, Bootswatch | 반응형 UI 디자인 |
 | **Real-time** | WebRTC | P2P 영상/음성 통신 및 데이터 채널 |
 | **Co-browsing**| Apache PDFBox, pdf.js, signature_pad.js | PDF 처리, 렌더링 및 서명 |
-| **Database** | MariaDB | 데이터 영속성 |
-| **Build** | Gradle | 의존성 관리 및 빌드 자동화 |
+| **Database** | MariaDB | 
+| **Build** | Gradle |
 
 ---
 
