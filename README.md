@@ -43,9 +43,6 @@
 - **양식 채우기**: 고객은 상담사의 안내에 따라 문서 내의 특정 필드에 텍스트를 입력하거나, 체크박스를 선택하고, **전자 서명**을 할 수 있습니다.
 - **기술**: 백엔드에서는 `Apache PDFBox`로 문서를 처리하고, 프론트엔드에서는 `pdf.js`로 렌더링하며, `signature_pad.js`로 서명 입력을 구현했습니다. 모든 동기화는 WebRTC `DataChannel`을 통해 이루어집니다.
 
-### 📌 보안 및 인증
-- Spring Security를 통해 기본적인 인증 및 API 접근 제어를 제공합니다.
-
 ---
 
 ## 📦 기술 스택
@@ -53,7 +50,6 @@
 | **Backend** | Java 17, Spring Boot 3.3.5 | 메인 애플리케이션 프레임워크 |
 | | Spring Data JPA (Hibernate) | 데이터베이스 ORM |
 | | Spring WebSocket | WebRTC 시그널링 서버 구현 |
-| | Spring Security | 인증 및 보안 |
 | **Frontend** | Vanilla JavaScript (ES6+) | 클라이언트 사이드 로직 |
 | | Thymeleaf | 서버 사이드 HTML 템플릿 엔진 |
 | | Bootstrap 5, Bootswatch | 반응형 UI 디자인 |
