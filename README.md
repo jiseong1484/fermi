@@ -19,7 +19,7 @@
     *   **REST API**: 고객, 상담사, 세션, 문서 등 시스템의 모든 자원을 관리하는 API를 제공합니다.
     *   **WebSocket Signaling Server**: WebRTC 연결 설정을 위한 시그널링 메시지(Offer, Answer, ICE Candidate)를 중계합니다.
     *   **Co-browsing 동기화**: WebRTC DataChannel을 통해 문서 페이지 이동, 커서 위치, 양식 입력 등의 이벤트를 실시간으로 동기화합니다.
-    *   **기술**: Java 17, Spring Boot 3.3.5, Spring Data JPA, Spring WebSocket, Spring Security.
+    *   **기술**: Java 17, Spring Boot 3.3.5, Spring Data JPA, Spring WebSocket.
 
 3.  **데이터베이스 (MariaDB)**
     *   상담 세션 정보, 고객 및 상담사 정보, 대기열 상태, 완료된 문서 데이터 등을 저장합니다.
